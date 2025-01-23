@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Онлайн-тест</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .question {
+      margin-bottom: 20px;
+    }
+    .question h3 {
+      margin: 10px 0;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Онлайн-тест</h1>
+  <input type="file" id="fileInput" accept=".txt">
+  <div id="quiz"></div>
+  <button id="submitBtn" style="display: none;" onclick="submitTest()">Отправить</button>
+  <div class="result" id="result"></div>
+
+  <script>
+    let testData = [];
+
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          parseTestFile(content);
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    function parseTestFile(content) {
+      const blocks = content.split(/\n\s*\n/);
+      testData = [];
+
+      try {
+        blocks.forEach((block, index) => {
+          const lines = block.trim().split('\n').map(line => line.trim());
+
+          if (lines.length < 2) {
+            throw new Error(`Ошибка в блоке ${index + 1}: недостаточно строк.`);
+          }
+
+          // Определяем тип вопроса
+          const question = lines[0];
+          const isOpenQuestion = question.toLowerCase().includes('(открытый)');
+          const isComplexOpenQuestion = question.toLowerCase().includes('(открытый-3)');
+
+          if (isOpenQuestion) {
+            // Открытый вопрос (2 или 3 балла)
+            const correctAnswer = lines[1].trim();
+            const points = isComplexOpenQuestion ? 3 : 2;
+            testData.push({
+              question: question,
+              type: 'open',
+              correct: correctAnswer,
+              points: points
+            });
+          } else {
+            // Вопрос с выбором ответа
+            const answers = lines.slice(1, -1);
+            const correct = parseInt(lines[lines.length - 1]) - 1;
+
+            if (!question || answers.length < 2 || isNaN(correct) || correct < 0 || correct >= answers.length) {
+              throw new Error(`Ошибка в блоке ${index + 1}: некорректные данные.`);
+            }
+
+            testData.push({
+              question: question,
+              type: 'choice',
+              answers: answers,
+              correct: correct,
+              points: 1
+            });
+          }
+        });
+
+        renderQuiz();
+      } catch (error) {
+        alert(`Произошла ошибка при обработке файла: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    function getRandomQuestions(num) {
+      const shuffled = testData.sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, num);
+    }
+
+    function renderQuiz() {
+      const questionsToShow = getRandomQuestions(30);
+      const quizDiv = document.getElementById('quiz');
+      quizDiv.innerHTML = '';
+
+      questionsToShow.forEach((item, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.classList.add('question');
+
+        const questionElement = document.createElement('h3');
+        questionElement.textContent = `${index + 1}. ${item.question}`;
+        questionDiv.appendChild(questionElement);
+
+if (item.type === 'choice') {
+  item.answers.forEach((answer, answerIndex) => {
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="radio" name="question${index}" value="${answerIndex}"> ${answer}`;
+    questionDiv.appendChild(label);
+  });
+} else if (item.type === 'open') {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Ваш ответ...';
+  questionDiv.appendChild(input);
+}
+
+quizDiv.appendChild(questionDiv);
+});
+
+document.getElementById('submitBtn').style.display = 'block';
+}
+
+function submitTest() {
+// Логика отправки теста и подсчета результатов
+alert('Тест отправлен!');
+}
+</script>
+</body>
+</html>
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
